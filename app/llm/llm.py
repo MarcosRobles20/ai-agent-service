@@ -1,7 +1,7 @@
 from langchain_ollama import ChatOllama
 
 
-def get_llm(model="qwen3:8b"):
+def get_llm(model: str) -> ChatOllama:
 
     return ChatOllama(
         model=model,

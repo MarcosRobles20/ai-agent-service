@@ -8,3 +8,8 @@ chromadb
 pydantic
 python-multipart
 langgraph-checkpoint-sqlite
+ddgs
+requests    
+beautifulsoup4 
+readability-lxml
+debugpy
