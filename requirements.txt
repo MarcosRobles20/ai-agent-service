@@ -4,6 +4,7 @@ langchain
 langgraph
 langchain-community
 langchain-ollama
+langchain-chroma
 chromadb
 pydantic
 python-multipart
@@ -12,4 +13,5 @@ ddgs
 requests    
 beautifulsoup4 
 readability-lxml
+pypdf
 debugpy

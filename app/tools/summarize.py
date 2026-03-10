@@ -1,10 +1,10 @@
 from langchain_core.tools import tool
 from langchain_ollama import ChatOllama
 from langchain_core.prompts import ChatPromptTemplate
-
+from app.agent.events import agent_event
 
 @tool
-def summarize(text: str) -> str:
+def summarize(text: str) -> dict:
     """
     Genera un resumen conciso de un texto largo.
     Úsala cuando el usuario pida resumir un artículo, documento o cualquier fragmento de texto.
@@ -21,7 +21,14 @@ def summarize(text: str) -> str:
         ),
         ("user", "Resume el siguiente texto:\n\n{text}"),
     ])
-
     chain = prompt | llm
     response = chain.invoke({"text": text})
-    return response.content
+    return {
+        "type": "summary",
+        "data": {"summary": response.content},
+        "meta": {},
+        "content": response.content,
+        "agent_events": [
+            agent_event("summarized", "summary", {"summary": response.content})
+        ]
+    }
