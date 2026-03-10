@@ -12,7 +12,7 @@ class ChatRequest(BaseModel):
 
     messages: List[ChatMessage]
     idChat: Optional[str] = None
-
+    isNewChat: Optional[bool] = False
     model: Optional[str] = "qwen3:8b"
 
 

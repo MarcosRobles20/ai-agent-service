@@ -1,35 +1,59 @@
 from fastapi import FastAPI
-from langchain_core.messages import HumanMessage, AIMessage
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
+from contextlib import asynccontextmanager
 
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+import ollama
 from app.agent.graph import create_graph
 from app.schemas.chat import ChatRequest
-
-app = FastAPI()
-
-graph = create_graph()
+from app.services.chat_stream_service import ChatStreamService, SSE_HEADERS
 
 
-@app.post("/chat")
-def chat(request: ChatRequest):
 
-    messages = []
+@asynccontextmanager
+async def lifespan(app: FastAPI):
 
-    for msg in request.messages[-1:]:
+    # ---- STARTUP ----
+    memory_cm = AsyncSqliteSaver.from_conn_string("agent_memory.db")
+    memory = await memory_cm.__aenter__()
 
-        if msg.role == "user":
-            messages.append(HumanMessage(content=msg.content))
+    graph = create_graph(memory)
 
-        elif msg.role == "assistant":
-            messages.append(AIMessage(content=msg.content))
+    app.state.graph = graph
+    app.state.memory_cm = memory_cm
 
-    thread_id = str(request.idChat or "default")
+    yield
 
-    result = graph.invoke(
-        {"messages": messages},
-        config={"configurable": {"thread_id": thread_id}},
+    # ---- SHUTDOWN ----
+    await memory_cm.__aexit__(None, None, None)
+
+
+app = FastAPI(lifespan=lifespan)
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.post("/agent-stream")
+async def chat(request: ChatRequest):
+    return StreamingResponse(
+        ChatStreamService.stream_chat(request=request, graph=app.state.graph),
+        media_type="text/event-stream",
+        headers=SSE_HEADERS,
     )
-    last_message = result["messages"][-1]
 
-    return {
-        "response": last_message.content
-    }
+@app.get("/models")
+def get_models_ollama():
+    models = ollama.list()
+    return models
+
+@app.post("/")
+def root():
+    return {"message": "AI service funcionando. Envíe solicitudes POST a /agent-stream con el formato adecuado."}
